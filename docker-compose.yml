@@ -1,0 +1,148 @@
+version: "3.7"
+services:
+
+  basis:
+    image: webdevops/php-nginx:7.4
+    container_name: basis
+    depends_on:
+      - db57
+    volumes:
+      - ./src/basis:/var/www:cached
+      - ./src/basis/public/fileadmin:/var/www/public/fileadmin
+      - ./src/basis/public/typo3conf:/var/www/public/typo3conf
+      - ./src/basis/public/uploads:/var/www/public/uploads
+      - ./log/basis.dev.test:/var/log/apache2
+      - ./config/basis/php-apache/etc/php/php.ini:/opt/docker/etc/php/php.ini
+      - ./config/basis/php-apache/etc/httpd/ssl:/opt/docker/etc/httpd/ssl
+      - ./config/basis/php-apache/etc/httpd/conf.d/20-server.conf:/opt/docker/etc/httpd/conf.d/20-server.conf
+      - ./config/basis/php-apache/etc/php/conf.d/20-apcu.ini:/usr/local/etc/php/conf.d/apcu.ini
+    restart: always
+    environment:
+      WEB_DOCUMENT_ROOT: "/var/www/public"
+      WEB_ALIAS_DOMAIN: "basis.dev.test"
+      LOG_STDOUT: "/var/log/docker.stdout"
+      LOG_STDERR: "/var/log/docker.stderr"
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.backend=basis'
+      - 'traefik.port=443'
+      - 'traefik.protocol=https'
+      - 'traefik.frontend.rule=Host:basis.dev.test'
+    networks:
+      - devops
+
+  mysql:
+    image: mysql:5.5
+    container_name: mysql
+    volumes:
+      - ./db_data:/var/lib/mysql:cached
+      - ./config/mysql/etc/mysql:/etc/mysql:cached
+    ports:
+      - '3306:3306'
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+    labels:
+      - 'traefik.enable=false'
+    networks:
+      - devops
+
+  mysql56:
+    image: cytopia/mysql-5.6
+    container_name: mysql56
+    volumes:
+      - ./mysql56/mysql:/var/lib/mysql:cached
+      - ./config/mysql56/etc/mysql:/etc/mysql:cached
+    ports:
+      - '3307:3306'
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+    labels:
+      - 'traefik.enable=false'
+    networks:
+      - devops
+
+  mysql57:
+    image: mariadb:10.4
+    container_name: mysql57
+    volumes:
+      - ./mysql57/mysql:/var/lib/mysql:cached
+      - ./config/mysql57/etc/mysql:/etc/mysql:cached
+    ports:
+      - '3310:3306'
+    restart: always
+    command:
+      - --character-set-server=utf8
+      - --collation-server=utf8_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+    labels:
+      - 'traefik.enable=false'
+    networks:
+      - devops
+
+  db57:
+    image: mysql:5.7
+    container_name: db57
+    volumes:
+      - ./db57/mysql:/var/lib/mysql:cached
+      - ./config/db57/etc/mysql:/etc/mysql:cached
+    ports:
+      - '3308:3306'
+    restart: always
+    command: >
+      --character-set-server=utf8
+      --collation-server=utf8_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+    labels:
+      - 'traefik.enable=false'
+    networks:
+      - devops
+
+  mariadb:
+    image: mariadb:10.1.19
+    container_name: mariadb
+    volumes:
+      - ./mariadb/mysql:/var/lib/mysql:cached
+      - ./config/mariadb/etc/mysql:/etc/mysql:cached
+    ports:
+      - '3309:3306'
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+    labels:
+      - 'traefik.enable=false'
+    networks:
+      - devops
+
+  traefik:
+    image: traefik:1.4.2
+    container_name: traefik
+    restart: always
+    command:  --web --docker --logLevel=INFO
+    ports:
+      - '80:80'
+      - '443:443'
+      - '8080:8080'
+      - '9200:9200'
+    volumes:
+      - ./config/traefik/traefik.toml:/etc/traefik/traefik.toml:cached
+      - ./config/php-apache/etc/httpd/ssl:/etc/traefik/https:cached
+      - ./log/traefik:/var/log:cached
+      - /var/run/docker.sock:/var/run/docker.sock:cached
+    networks:
+      - devops
+
+networks:
+  devops:
+    driver: bridge
+
+volumes:
+    htdocs:
+    mysql:
+    ssh:
+    fileadmin:
+    typo3conf:
+    typo3temp:
